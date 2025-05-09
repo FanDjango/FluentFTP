@@ -27,7 +27,7 @@ namespace FluentFTP.Client.BaseClient {
 			FtpReply reply;
 
 			// read the absolute path of the current working dir
-			if (!(reply = ((IInternalFtpClient)this).ExecuteInternal("PWD")).Success) {
+			if (!(reply = ((IInternalFtpClient)this).ExecuteInternal("PWD", 0, -1)).Success) {
 				throw new FtpCommandException(reply);
 			}
 

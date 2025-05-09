@@ -15,7 +15,7 @@ namespace FluentFTP {
 		/// <param name="token">The token that can be used to cancel the entire process.</param>
 		/// <returns>FtpReply representing the response from the server</returns>
 		public async Task<FtpReply> GetReply(CancellationToken token = default(CancellationToken)) {
-			return await ((IInternalFtpClient)this).GetReplyInternal(token, null, false, 0);
+			return await ((IInternalFtpClient)this).GetReplyInternal(token, null, false, 0, true, -1);
 		}
 	}
 }

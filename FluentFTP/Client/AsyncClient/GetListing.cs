@@ -385,7 +385,7 @@ namespace FluentFTP {
 						}
 					}
 					catch (AuthenticationException) {
-						FtpReply reply = await ((IInternalFtpClient)this).GetReplyInternal(token, listcmd, false, -1); // no exhaustNoop, but non-blocking
+						FtpReply reply = await ((IInternalFtpClient)this).GetReplyInternal(token, listcmd, false, -1, true, -1); // no exhaustNoop, but non-blocking
 						if (!reply.Success) {
 							throw new FtpCommandException(reply);
 						}

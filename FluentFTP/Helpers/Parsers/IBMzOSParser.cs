@@ -65,7 +65,7 @@ namespace FluentFTP.Helpers.Parsers {
 				else {
 					cwd = path;
 				}
-				if (!(reply = ((IInternalFtpClient)client).ExecuteInternal("XDSS " + cwd)).Success) {
+				if (!(reply = ((IInternalFtpClient)client).ExecuteInternal("XDSS " + cwd, 0, -1)).Success) {
 					throw new FtpCommandException(reply);
 				}
 				// SITE PDSTYPE=PDSE RECFM=FB BLKSIZE=16000 DIRECTORY=1 LRECL=80 PRIMARY=3 SECONDARY=110 TRACKS EATTR=SYSTEM

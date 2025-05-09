@@ -19,7 +19,7 @@ namespace FluentFTP.Client.BaseClient {
 			if (IsConnected && IsAuthenticated) {
 				try {
 					if (((IInternalFtpClient)this).NoopInternal(true)) {
-						_ = ((IInternalFtpClient)this).GetReplyInternal("NOOP (<-IsStillConnected/Noop)", false, timeout);
+						_ = ((IInternalFtpClient)this).GetReplyInternal("NOOP (<-IsStillConnected/Noop)", false, timeout, true, -1);
 						connected = true;
 					}
 				}

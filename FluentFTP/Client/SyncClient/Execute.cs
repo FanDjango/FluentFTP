@@ -17,7 +17,7 @@ namespace FluentFTP {
 		/// <param name="command">The command to execute</param>
 		/// <returns>The servers reply to the command</returns>
 		public FtpReply Execute(string command) {
-			return ((IInternalFtpClient)this).ExecuteInternal(command);
+			return ((IInternalFtpClient)this).ExecuteInternal(command, 0, -1);
 		}
 
 	}

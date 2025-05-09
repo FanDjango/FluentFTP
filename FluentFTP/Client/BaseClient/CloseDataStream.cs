@@ -27,7 +27,7 @@ namespace FluentFTP.Client.BaseClient {
 					// connection was not successful then there will be no reply from the server,
 					// however if the command was successful the server will send a reply .
 					if (stream.CommandStatus.Type == FtpResponseType.PositivePreliminary) {
-						if (!(reply = ((IInternalFtpClient)this).GetReplyInternal(LastCommandExecuted)).Success) {
+						if (!(reply = ((IInternalFtpClient)this).GetReplyInternal(LastCommandExecuted, false, 0, true, -1)).Success) {
 							throw new FtpCommandException(reply);
 						}
 					}
@@ -68,7 +68,7 @@ namespace FluentFTP.Client.BaseClient {
 					// connection was not successful then there will be no reply from the server,
 					// however if the command was successful the server will send a reply .
 					if (stream.CommandStatus.Type == FtpResponseType.PositivePreliminary) {
-						if (!(reply = await ((IInternalFtpClient)this).GetReplyInternal(token, LastCommandExecuted)).Success) {
+						if (!(reply = await ((IInternalFtpClient)this).GetReplyInternal(token, LastCommandExecuted, false, 0, true, -1)).Success) {
 							throw new FtpCommandException(reply);
 						}
 					}

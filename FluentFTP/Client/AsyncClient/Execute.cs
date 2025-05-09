@@ -112,7 +112,7 @@ namespace FluentFTP {
 				LastCommandTimestamp = DateTime.UtcNow;
 
 				// get the reply
-				reply = await ((IInternalFtpClient)this).GetReplyInternal(token, command, false, 0, false);
+				reply = await ((IInternalFtpClient)this).GetReplyInternal(token, command, false, 0, false, -1);
 			}
 			finally {
 				m_daemonSemaphore.Release();

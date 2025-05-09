@@ -71,7 +71,7 @@ namespace FluentFTP.Client.BaseClient {
 									m_stream.ConnectionState = FtpConnectionState.Unknown;
 
 									try {
-										success = ((IInternalFtpClient)this).GetReplyInternal(rndCmd + " (<-NoopDaemon)", false, 10000, false).Success;
+										success = ((IInternalFtpClient)this).GetReplyInternal(rndCmd + " (<-NoopDaemon)", false, 10000, false, -1).Success;
 									}
 									catch (Exception ex) {
 										((IInternalFtpClient)this).LogStatus(FtpTraceLevel.Verbose, "Got exception (#2): " + ex.Message + " (NoopDaemon)");

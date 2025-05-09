@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
 using FluentFTP.Client.Modules;
 using FluentFTP.Exceptions;
 using FluentFTP.Helpers;
@@ -13,8 +14,10 @@ namespace FluentFTP.Client.BaseClient {
 		/// Executes a command
 		/// </summary>
 		/// <param name="command">The command to execute</param>
+		/// <param name="timeOut">Internal GetReply timeout</param>
+		/// <param name="linesExpected">-1 normal operation, 0 accumulate until timeOut, >0 accumulate until n msgs received</param>
 		/// <returns>The servers reply to the command</returns>
-		FtpReply IInternalFtpClient.ExecuteInternal(string command) {
+		FtpReply IInternalFtpClient.ExecuteInternal(string command, int timeOut, int linesExpected) {
 			FtpReply reply;
 
 			bool reconnect = false;
@@ -107,7 +110,7 @@ namespace FluentFTP.Client.BaseClient {
 				LastCommandTimestamp = DateTime.UtcNow;
 
 				// get the reply
-				reply = ((IInternalFtpClient)this).GetReplyInternal(command, false, 0, false);
+				reply = ((IInternalFtpClient)this).GetReplyInternal(command, false, timeOut, false, linesExpected);
 			}
 			finally {
 				m_daemonSemaphore.Release();
