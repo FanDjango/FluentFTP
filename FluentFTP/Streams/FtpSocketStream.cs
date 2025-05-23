@@ -551,16 +551,14 @@ namespace FluentFTP {
 					return res;
 				}
 				catch {
-					if (cts.IsCancellationRequested) {
-						await CloseAsync(token);
-					}
+					await CloseAsync(token);
 
-					// CTS for Cancellation triggered and caused the exception
+					// token for Cancellation triggered and caused the exception
 					if (token.IsCancellationRequested) {
 						throw new OperationCanceledException("Cancelled read from socket stream");
 					}
 
-					// CTS for Timeout triggered and caused the exception
+					// token for Timeout triggered and caused the exception
 					if (cts.IsCancellationRequested) {
 						throw new TimeoutException("Timed out trying to read data from the socket stream!");
 					}
@@ -1130,7 +1128,7 @@ namespace FluentFTP {
 		}
 
 		/// <summary>
-		/// Helper for Async cancel in ConnectAsync 
+		/// Helper for Async cancel in ConnectAsync
 		/// </summary>
 		internal async Task EnableCancellation(Task task, CancellationToken token, Action action) {
 			var registration = token.Register(action);
@@ -1139,7 +1137,7 @@ namespace FluentFTP {
 		}
 
 		/// <summary>
-		/// Helper for Async cancel in ConnectAsync 
+		/// Helper for Async cancel in ConnectAsync
 		/// </summary>
 		internal async Task<T> EnableCancellation<T>(Task<T> task, CancellationToken token, Action action) {
 			var registration = token.Register(action);
@@ -1172,6 +1170,7 @@ namespace FluentFTP {
 			}
 #endif
 			catch (SocketException ex) when (ex.SocketErrorCode is SocketError.OperationAborted or SocketError.TimedOut) {
+				token.ThrowIfCancellationRequested();
 				throw new TimeoutException("Timed out trying to connect!");
 			}
 
