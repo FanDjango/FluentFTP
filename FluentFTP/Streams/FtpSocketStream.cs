@@ -544,8 +544,8 @@ namespace FluentFTP {
 				cts.CancelAfter(ReadTimeout);
 				try {
 #if NETSTANDARD2_1 || NET5_0_OR_GREATER
-					var res = BaseStream.ReadAsync(buffer.AsMemory(offset, count), cts.Token);
-					if (await Task.WhenAny(res.AsTask(), Task.Delay(Timeout.Infinite, cts.Token)) != res.AsTask()) {
+					var res = BaseStream.ReadAsync(buffer.AsMemory(offset, count), cts.Token).AsTask();
+					if (await Task.WhenAny(res, Task.Delay(Timeout.Infinite, cts.Token)) != res) {
 						throw new TimeoutException();
 					}
 #else
