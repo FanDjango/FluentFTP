@@ -591,8 +591,11 @@ namespace FluentFTP {
 			using (var cts = CancellationTokenSource.CreateLinkedTokenSource(token)) {
 				cts.CancelAfter(ReadTimeout);
 				try {
-					var res = await BaseStream.ReadAsync(buffer, cts.Token);
-					return res;
+					var res = BaseStream.ReadAsync(buffer, cts.Token).AsTask();
+					if (await Task.WhenAny(res, Task.Delay(Timeout.Infinite, cts.Token)) != res) {
+						throw new TimeoutException();
+					}
+					return await res;
 				}
 				catch {
 					await CloseAsync(token);
