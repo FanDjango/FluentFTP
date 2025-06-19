@@ -11,6 +11,7 @@ namespace FluentFTP {
 		/// and if not then falls back to OS-specific listings (LIST command)
 		/// </summary>
 		Auto = 0,
+		None = 0,
 
 		/// <summary>
 		/// Load the modify date using MDTM when it could not

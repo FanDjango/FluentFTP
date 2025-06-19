@@ -5,9 +5,83 @@ using FluentFTP.Rules;
 using FluentFTP.Helpers;
 using FluentFTP.Exceptions;
 using FluentFTP.Client.Modules;
+using FluentFTP.Model.Functions;
 
 namespace FluentFTP {
 	public partial class FtpClient {
+
+		/// <summary>
+		/// Downloads the specified directory onto the local file system.
+		/// In Mirror mode, we will download missing files, and delete any extra files from disk that are not present on the server. This is very useful when creating an exact local backup of an FTP directory.
+		/// In Update mode, we will only download missing files and preserve any extra files on disk. This is useful when you want to simply download missing files from an FTP directory.
+		/// Only downloads the files and folders matching all the rules provided, if any.
+		/// All exceptions during downloading are caught, and the exception is stored in the related FtpResult object.
+		/// </summary>
+		/// <param name="localFolder">The full path of the local folder on disk to download into. It is created if it does not exist.</param>
+		/// <param name="remoteFolder">The full path of the remote FTP folder that you want to download. If it does not exist, an empty result list is returned.</param>
+		/// <param name="config">Config for this function</param>
+		/// <param name="progress">Provide a callback to track download progress.</param>
+		/// <remarks>
+		/// If verification is enabled (All options other than <see cref="FtpVerify.None"/>) the file will be verified against the source using the verification methods specified by <see cref="FtpVerifyMethod"/> in the client config.
+		/// <br/> If only <see cref="FtpVerify.OnlyVerify"/> is set then the return of this method depends on both a successful transfer &amp; verification.
+		/// <br/> Additionally, if any verify option is set and a retry is attempted the existsMode will automatically be set to <see cref="FtpRemoteExists.Overwrite"/>.
+		/// If <see cref="FtpVerify.Throw"/> is set and <see cref="FtpError.Throw"/> is <i>not set</i>, then individual verification errors will not cause an exception to propagate from this method.
+		/// </remarks>
+		/// <returns>
+		/// Returns a listing of all the remote files, indicating if they were downloaded, skipped or overwritten.
+		/// Returns a blank list if nothing was transferred. Never returns null.
+		/// </returns>
+		public List<FtpResult> DownloadDirectory(string localFolder, string remoteFolder, FtpDownloadDirectoryConfig config, Action<FtpProgress> progress = null) {
+
+			if (localFolder.IsBlank()) {
+				throw new ArgumentException("Required parameter is null or blank.", nameof(localFolder));
+			}
+
+			if (remoteFolder.IsBlank()) {
+				throw new ArgumentException("Required parameter is null or blank.", nameof(remoteFolder));
+			}
+
+			if (config == null) {
+				config = new FtpDownloadDirectoryConfig();
+			}
+
+			// ensure the local path ends with slash
+			localFolder = localFolder.EnsurePostfix(Path.DirectorySeparatorChar.ToString());
+
+			// cleanup the remote path
+			remoteFolder = remoteFolder.GetFtpPath().EnsurePostfix("/");
+
+			LogFunction(nameof(DownloadDirectory), new object[] { localFolder, remoteFolder, config.Mode, config.ExistsMode, config.VerifyOptions, (config.Rules.IsBlank() ? null : config.Rules.Count + " rules") });
+
+			var results = new List<FtpResult>();
+
+			// Fix #1121: check if dir is missing and throw FtpMissingObjectException
+			if (!DirectoryExists(remoteFolder)) {
+				throw new FtpMissingObjectException("Cannot download non-existant directory: " + remoteFolder, null, remoteFolder, FtpObjectType.Directory);
+			}
+
+			// ensure the local dir exists
+			localFolder.EnsureDirectory();
+
+			// get all the files in the remote directory
+			FtpListOption lOpt = FtpListOption.Recursive | FtpListOption.Size;
+			if (config.ListOptions != FtpListOption.None) {
+				lOpt = config.ListOptions | lOpt;
+			}
+			var listing = GetListing(remoteFolder, lOpt);
+
+			// collect paths of the files that should exist (lowercase for CI checks)
+			var shouldExist = new Dictionary<string, bool>();
+
+			// loop through each file and transfer it
+			var toDownload = FileDownloadModule.GetFilesToDownload(this, localFolder, remoteFolder, config.Rules, results, listing, shouldExist);
+			DownloadServerFiles(toDownload, config.ExistsMode, config.VerifyOptions, progress);
+
+			// delete the extra local files if in mirror mode
+			DeleteExtraLocalFiles(localFolder, config.Mode, shouldExist, config.Rules);
+
+			return results;
+		}
 
 		/// <summary>
 		/// Downloads the specified directory onto the local file system.
@@ -36,48 +110,8 @@ namespace FluentFTP {
 		public List<FtpResult> DownloadDirectory(string localFolder, string remoteFolder, FtpFolderSyncMode mode = FtpFolderSyncMode.Update,
 			FtpLocalExists existsMode = FtpLocalExists.Skip, FtpVerify verifyOptions = FtpVerify.None, List<FtpRule> rules = null, Action<FtpProgress> progress = null) {
 
-			if (localFolder.IsBlank()) {
-				throw new ArgumentException("Required parameter is null or blank.", nameof(localFolder));
-			}
-
-			if (remoteFolder.IsBlank()) {
-				throw new ArgumentException("Required parameter is null or blank.", nameof(remoteFolder));
-			}
-
-			// ensure the local path ends with slash
-			localFolder = localFolder.EnsurePostfix(Path.DirectorySeparatorChar.ToString());
-
-			// cleanup the remote path
-			remoteFolder = remoteFolder.GetFtpPath().EnsurePostfix("/");
-
-			LogFunction(nameof(DownloadDirectory), new object[] { localFolder, remoteFolder, mode, existsMode, verifyOptions, (rules.IsBlank() ? null : rules.Count + " rules") });
-
-			var results = new List<FtpResult>();
-
-			// Fix #1121: check if dir is missing and throw FtpMissingObjectException
-			if (!DirectoryExists(remoteFolder)) {
-				throw new FtpMissingObjectException("Cannot download non-existant directory: " + remoteFolder, null, remoteFolder, FtpObjectType.Directory);
-			}
-
-			// ensure the local dir exists
-			localFolder.EnsureDirectory();
-
-			// get all the files in the remote directory
-			var listing = GetListing(remoteFolder, FtpListOption.Recursive | FtpListOption.Size);
-
-			// collect paths of the files that should exist (lowercase for CI checks)
-			var shouldExist = new Dictionary<string, bool>();
-
-			// loop through each file and transfer it
-			var toDownload = FileDownloadModule.GetFilesToDownload(this, localFolder, remoteFolder, rules, results, listing, shouldExist);
-			DownloadServerFiles(toDownload, existsMode, verifyOptions, progress);
-
-			// delete the extra local files if in mirror mode
-			DeleteExtraLocalFiles(localFolder, mode, shouldExist, rules);
-
-			return results;
+			return DownloadDirectory(localFolder, remoteFolder, new FtpDownloadDirectoryConfig() { Mode = mode, ExistsMode = existsMode, VerifyOptions = verifyOptions, Rules = rules }, progress);
 		}
-
 
 		/// <summary>
 		/// Download all the listed files and folders from the main directory
