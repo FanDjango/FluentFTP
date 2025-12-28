@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-    <b>FluentFTP is free, but powered by</b> <a href="https://github.com/sponsors/robinrodricks"><b>your donations</b></a>
+    <b>A project by Robin Rodricks & Michael Stiemke</b>
 </p>
 
 FluentFTP is a fully managed FTP and FTPS client library for .NET & .NET Standard, optimized for speed. It provides extensive FTP commands, File uploads/downloads, SSL/TLS connections, Automatic directory listing parsing, File hashing/checksums, File permissions/CHMOD, FTP proxies, FXP transfers, UTF-8 support, Async/await support, Powershell support and more.
@@ -141,9 +141,9 @@ FluentFTP works on .NET and .NET Standard/.NET Core.
 |---------------		|-----------		|
 | **.NET 4.6.2**      	| net462     		| 
 | **.NET 4.7.2**      	| net472     		| 
-| **.NET 5.0**      	| net50     		| 
-| **.NET 6.0**      	| net60     		| 
 | **.NET 7.0**      	| net70     		| 
+| **.NET 8.0**      	| net80     		| 
+| **.NET 9.0**      	| net90     		| 
 | **.NET Standard 2.0** | netstandard2.0	| 
 | **.NET Standard 2.1** | netstandard2.1	| 
 
@@ -154,7 +154,7 @@ FluentFTP is also supported on these platforms: (via .NET Standard)
   - **Xamarin.Android** 10.0
   - **Universal Windows Platform** 10.0
 
-Binaries for all platforms are built from a single Visual Studio Project. You will need the latset [Visual Studio](https://visualstudio.microsoft.com/downloads/) to build or contribute to FluentFTP.
+Binaries for all platforms are built from a single Visual Studio Project. You will need the latest [Visual Studio](https://visualstudio.microsoft.com/downloads/) to build or contribute to FluentFTP.
 
 
 ## Example Usage

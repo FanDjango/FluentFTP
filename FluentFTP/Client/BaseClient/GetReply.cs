@@ -355,7 +355,7 @@ namespace FluentFTP.Client.BaseClient {
 				if (exhaustNoop) {
 					// tickle the server
 					LogWithPrefix(FtpTraceLevel.Verbose, "Sending NOOP (<-GetReply)");
-					m_stream.WriteLine(Encoding, "NOOP");
+					await m_stream.WriteLineAsync(Encoding, "NOOP", token);
 					LastCommandTimestamp = DateTime.UtcNow;
 				}
 
@@ -469,11 +469,11 @@ namespace FluentFTP.Client.BaseClient {
 
 			}
 			catch (Exception ex) {
+				LogWithPrefix(FtpTraceLevel.Verbose, "GetReply(...) failure: " + ex.Message);
 				if (m_stream != null) {
-					await m_stream.CloseAsync();
+					await m_stream.CloseAsync(token);
 					m_stream = null;
 				}
-				LogWithPrefix(FtpTraceLevel.Verbose, "GetReply(...) failure: " + ex.Message);
 				throw;
 			}
 			finally {
@@ -530,15 +530,15 @@ namespace FluentFTP.Client.BaseClient {
 			reply.Command = string.IsNullOrEmpty(command) ? string.Empty : LogMaskModule.MaskCommand(this, command);
 
 			if (LastReplies == null) {
-				LastReplies = new List<FtpReply> {
+				LastReplies = new List<FtpReply>(5) {
 					reply
 				};
 			}
 			else {
-				LastReplies.Insert(0, reply);
-				if (LastReplies.Count > 5) {
-					LastReplies.RemoveAt(5);
+				if (LastReplies.Count > 0 && LastReplies.Count == LastReplies.Capacity) {
+					LastReplies.RemoveAt(LastReplies.Count - 1);
 				}
+				LastReplies.Insert(0, reply);
 			}
 
 			return reply;
