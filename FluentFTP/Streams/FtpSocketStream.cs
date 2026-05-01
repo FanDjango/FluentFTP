@@ -545,19 +545,14 @@ namespace FluentFTP {
 			}
 
 			m_lastActivity = DateTime.UtcNow;
-			using (var cts = CancellationTokenSource.CreateLinkedTokenSource(token)) {
-				cts.CancelAfter(ReadTimeout);
+			using (var timeoutSrc = CancellationTokenSource.CreateLinkedTokenSource(token)) {
+				timeoutSrc.CancelAfter(ReadTimeout);
 				try {
 #if NETSTANDARD2_1 || NET5_0_OR_GREATER
-					var res = BaseStream.ReadAsync(buffer.AsMemory(offset, count), cts.Token).AsTask();
+					return await BaseStream.ReadAsync(buffer.AsMemory(offset, count), timeoutSrc.Token);
 #else
-					var res =  BaseStream.ReadAsync(buffer, offset, count, cts.Token);
+					return await BaseStream.ReadAsync(buffer, offset, count, timeoutSrc.Token);
 #endif
-					if (await Task.WhenAny(res, Task.Delay(Timeout.Infinite, cts.Token)) != res){
-						throw new TimeoutException();
-					}
-
-					return await res;
 				}
 				catch {
 					await CloseAsync(token);
@@ -568,7 +563,7 @@ namespace FluentFTP {
 					}
 
 					// token for Timeout triggered and caused the exception
-					if (cts.IsCancellationRequested) {
+					if (timeoutSrc.IsCancellationRequested) {
 						throw new TimeoutException("Timed out trying to read data from the socket stream!");
 					}
 
@@ -591,15 +586,10 @@ namespace FluentFTP {
 			}
 
 			m_lastActivity = DateTime.UtcNow;
-			using (var cts = CancellationTokenSource.CreateLinkedTokenSource(token)) {
-				cts.CancelAfter(ReadTimeout);
+			using (var timeoutSrc = CancellationTokenSource.CreateLinkedTokenSource(token)) {
+				timeoutSrc.CancelAfter(ReadTimeout);
 				try {
-					var res = BaseStream.ReadAsync(buffer, cts.Token).AsTask();
-					if (await Task.WhenAny(res, Task.Delay(Timeout.Infinite, cts.Token)) != res){
-						throw new TimeoutException();
-					}
-
-					return await res;
+					return await BaseStream.ReadAsync(buffer, timeoutSrc.Token);
 				}
 				catch {
 					await CloseAsync(token);
@@ -610,7 +600,7 @@ namespace FluentFTP {
 					}
 
 					// token for Timeout triggered and caused the exception
-					if (cts.IsCancellationRequested) {
+					if (timeoutSrc.IsCancellationRequested) {
 						throw new TimeoutException("Timed out trying to read data from the socket stream!");
 					}
 
@@ -1008,24 +998,25 @@ namespace FluentFTP {
 			int ctmo = this.ConnectTimeout;
 
 #if NETSTANDARD || NET5_0_OR_GREATER
-			var args = new SocketAsyncEventArgs {
+			using (var args = new SocketAsyncEventArgs {
 				RemoteEndPoint = new IPEndPoint(ipad, port)
-			};
-			var connectEvent = new ManualResetEvent(false);
-			args.Completed += (s, e) => { connectEvent.Set(); };
+			})
+			using (var connectEvent = new ManualResetEvent(false)) {
+				args.Completed += (s, e) => { connectEvent.Set(); };
 
-			if (m_socket.ConnectAsync(args)) {
-				if (!connectEvent.WaitOne(ctmo)) {
-					Close();
+				if (m_socket.ConnectAsync(args)) {
+					if (!connectEvent.WaitOne(ctmo)) {
+						Close();
+						throw new TimeoutException("Timed out trying to connect!");
+					}
+				}
+
+				if (args.SocketError == SocketError.TimedOut) {
 					throw new TimeoutException("Timed out trying to connect!");
 				}
-			}
 
-			if (args.SocketError == SocketError.TimedOut) {
-				throw new TimeoutException("Timed out trying to connect!");
+				return args.SocketError == SocketError.Success;
 			}
-
-			return args.SocketError == SocketError.Success;
 #else
 			IAsyncResult iar = m_socket.BeginConnect(ipad, port, null, null);
 			_ = iar.AsyncWaitHandle.WaitOne(ctmo, true);
@@ -1142,18 +1133,18 @@ namespace FluentFTP {
 		/// Helper for Async cancel in ConnectAsync
 		/// </summary>
 		internal async Task EnableCancellation(Task task, CancellationToken token, Action action) {
-			var registration = token.Register(action);
-			_ = task.ContinueWith(x => registration.Dispose(), CancellationToken.None);
-			await task;
+			using (var registration = token.Register(action)) {
+				await task.ConfigureAwait(false);
+			}
 		}
 
 		/// <summary>
 		/// Helper for Async cancel in ConnectAsync
 		/// </summary>
 		internal async Task<T> EnableCancellation<T>(Task<T> task, CancellationToken token, Action action) {
-			var registration = token.Register(action);
-			_ = task.ContinueWith(x => registration.Dispose(), CancellationToken.None);
-			return await task;
+			using (var registration = token.Register(action)) {
+				return await task.ConfigureAwait(false);
+			}
 		}
 
 		/// <summary>
@@ -1164,8 +1155,8 @@ namespace FluentFTP {
 		/// <param name="port">The port to connect to</param>
 		/// <param name="token">The token that can be used to cancel the entire process</param>
 		private async Task<bool> ConnectHelperAsync(IPAddress ipad, int port, CancellationToken token) {
-			try {
-				using (var timeoutSrc = CancellationTokenSource.CreateLinkedTokenSource(token)) {
+			using (var timeoutSrc = CancellationTokenSource.CreateLinkedTokenSource(token)) {
+				try {
 					timeoutSrc.CancelAfter(ConnectTimeout);
 #if NET462
 					var connectResult = m_socket.BeginConnect(ipad, port, null, null);
@@ -1174,18 +1165,18 @@ namespace FluentFTP {
 					await EnableCancellation(m_socket.ConnectAsync(ipad, port), timeoutSrc.Token, () => DisposeSocket());
 #endif
 				}
-			}
 #if !NETSTANDARD
-			catch (ObjectDisposedException) {
-				throw new TimeoutException("Timed out trying to connect!");
-			}
+				catch (ObjectDisposedException) {
+					throw new TimeoutException("Timed out trying to connect!");
+				}
 #endif
-			catch (SocketException ex) when (ex.SocketErrorCode is SocketError.OperationAborted or SocketError.TimedOut) {
-				token.ThrowIfCancellationRequested();
-				throw new TimeoutException("Timed out trying to connect!");
-			}
+				catch (SocketException ex) when (ex.SocketErrorCode is SocketError.OperationAborted or SocketError.TimedOut) {
+					token.ThrowIfCancellationRequested();
+					throw new TimeoutException("Timed out trying to connect!");
+				}
 
-			return m_socket.Connected;
+				return m_socket.Connected;
+			}
 		}
 
 		/// <summary>
@@ -1540,7 +1531,9 @@ namespace FluentFTP {
 			args.UserToken = connectEvent;
 			args.Completed += (s, e) => { connectEvent.Set(); };
 			if (!m_socket.AcceptAsync(args)) {
+				connectEvent.Dispose();
 				CheckResult(args);
+				args.Dispose();
 				return null;
 			}
 
@@ -1553,12 +1546,18 @@ namespace FluentFTP {
 			}
 
 			var connectEvent = (ManualResetEvent)args.UserToken;
-			if (!connectEvent.WaitOne(timeout)) {
-				Close();
-				throw new TimeoutException("Timed out waiting for the server to connect to the active data socket.");
-			}
+			try {
+				if (!connectEvent.WaitOne(timeout)) {
+					Close();
+					throw new TimeoutException("Timed out waiting for the server to connect to the active data socket.");
+				}
 
-			CheckResult(args);
+				CheckResult(args);
+			}
+			finally {
+				connectEvent?.Dispose();
+				args?.Dispose();
+			}
 		}
 
 		private void CheckResult(SocketAsyncEventArgs args) {
@@ -1672,9 +1671,6 @@ namespace FluentFTP {
 			if (Client != null) {
 				((IInternalFtpClient)Client).LogStatus(FtpTraceLevel.Verbose, "Disposing(sync) " + Client.ClientType + ".FtpSocketStream(" + connText + ")" + reduText);
 			}
-
-			// TODO: To support the CCC (Deactivate Encryption) command, some more additional logic
-			// is required and note that CustomStream GnuTLS currently does not support this at all.
 
 			if (m_sslStream != null) {          // Connection was a standard .NET SslStream (actually FtpSslStream)
 				DisposeSslStream();
@@ -1799,9 +1795,6 @@ namespace FluentFTP {
 			if (Client != null) {
 				((IInternalFtpClient)Client).LogStatus(FtpTraceLevel.Verbose, "Disposing(async) " + Client.ClientType + ".FtpSocketStream(" + connText + ")" + reduText);
 			}
-
-			// TODO: To support the CCC (Deactivate Encryption) command, some more additional logic
-			// is required and note that CustomStream GnuTLS currently does not support this at all.
 
 			if (m_sslStream != null) {             // Connection was a standard .NET SslStream (actually FtpSslStream)
 				await DisposeSslStreamAsync();

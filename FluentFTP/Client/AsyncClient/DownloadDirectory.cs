@@ -126,7 +126,58 @@ namespace FluentFTP {
 		public async Task<List<FtpResult>> DownloadDirectory(string localFolder, string remoteFolder, FtpFolderSyncMode mode = FtpFolderSyncMode.Update,
 			FtpLocalExists existsMode = FtpLocalExists.Skip, FtpVerify verifyOptions = FtpVerify.None, List<FtpRule> rules = null, IProgress<FtpProgress> progress = null, CancellationToken token = default(CancellationToken)) {
 
-			return await DownloadDirectory(localFolder, remoteFolder, new FtpDownloadDirectoryConfig() { Mode = mode, ExistsMode = existsMode, VerifyOptions = verifyOptions, Rules = rules }, progress, token);
+			if (localFolder.IsBlank()) {
+				throw new ArgumentException("Required parameter is null or blank.", nameof(localFolder));
+			}
+
+			if (remoteFolder.IsBlank()) {
+				throw new ArgumentException("Required parameter is null or blank.", nameof(remoteFolder));
+			}
+
+			// ensure the local path ends with slash
+			localFolder = localFolder.EnsurePostfix(Path.DirectorySeparatorChar.ToString());
+
+			// cleanup the remote path
+			remoteFolder = SanitizerModule.SanitizePath(this, remoteFolder).EnsurePostfix("/");
+
+			LogFunction(nameof(DownloadDirectory), new object[] { localFolder, remoteFolder, mode, existsMode, verifyOptions, (rules.IsBlank() ? null : rules.Count + " rules") });
+
+			var results = new List<FtpResult>();
+
+			// Fix #1121: check if dir is missing and throw FtpMissingObjectException
+			if (!await DirectoryExists(remoteFolder, token)) {
+				throw new FtpMissingObjectException("Cannot download non-existant directory: " + remoteFolder, null, remoteFolder, FtpObjectType.Directory);
+			}
+
+			// ensure the local dir exists
+			localFolder.EnsureDirectory();
+
+			// get all the files in the remote directory
+			var listing = await GetListing(remoteFolder, FtpListOption.Recursive | FtpListOption.Size, token);
+
+			// break if task is cancelled
+			token.ThrowIfCancellationRequested();
+
+			// collect paths of the files that should exist (lowercase for CI checks)
+			var shouldExist = new Dictionary<string, bool>();
+
+			// loop through each file and transfer it #1
+			var toDownload = FileDownloadModule.GetFilesToDownload(this, localFolder, remoteFolder, rules, results, listing, shouldExist);
+
+			// break if task is cancelled
+			token.ThrowIfCancellationRequested();
+
+			/*-------------------------------------------------------------------------------------/
+			 *   Cancelling after this point would leave the FTP server in an inconsistent state   *
+			 *-------------------------------------------------------------------------------------*/
+
+			// loop through each file and transfer it #2
+			await DownloadServerFilesAsync(toDownload, existsMode, verifyOptions, progress, token);
+
+			// delete the extra local files if in mirror mode
+			DeleteExtraLocalFiles(localFolder, mode, shouldExist, rules);
+
+			return results;
 		}
 
 		/// <summary>

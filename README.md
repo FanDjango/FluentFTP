@@ -6,7 +6,6 @@
 <a href="https://www.nuget.org/packages/FluentFTP"><img src="https://img.shields.io/nuget/vpre/FluentFTP.svg" alt="Version" /></a>
 <a href="https://www.nuget.org/packages/FluentFTP"><img src="https://img.shields.io/nuget/dt/FluentFTP.svg" alt="Downloads" /></a>
 <a href="https://github.com/robinrodricks/FluentFTP/graphs/contributors"><img src="https://img.shields.io/github/contributors/robinrodricks/FluentFTP.svg" alt="GitHub contributors" /></a>
-<a href="https://app.codacy.com/gh/robinrodricks/FluentFTP/dashboard"><img src="https://app.codacy.com/project/badge/Grade/8bc33aa55cb8494da3a7a07dba5316f7" alt="Codacy Badge" /></a>
 <a href="https://github.com/robinrodricks/FluentFTP/blob/master/LICENSE.TXT"><img src="https://img.shields.io/github/license/robinrodricks/FluentFTP.svg" alt="License" /></a>
 <a href="https://www.bestpractices.dev/projects/6661"><img src="https://www.bestpractices.dev/badge_static/passing" alt="OpenSSF Best Practices" /></a>
 </p>
@@ -53,6 +52,7 @@ FluentFTP is released under the permissive MIT License, so it can be used in bot
 	- Automatic [reconnection of FTP connections](https://github.com/robinrodricks/FluentFTP/wiki/Automatic-Reconnection) for broken or degraded sockets
     - Extensive support for [FTP commands](https://github.com/robinrodricks/FluentFTP/wiki/FTP-Support), including some server-specific commands
     - Easily send [server-specific](https://github.com/robinrodricks/FluentFTP/issues/88) FTP commands using the `Execute()` method
+	- State-of-the-art [security system](https://github.com/robinrodricks/FluentFTP/wiki/Security) to prevent FTP command injection, directory traversal attacks, encoding bypasses, and parser confusion attacks
     - Explicit and Implicit [SSL connections](https://github.com/robinrodricks/FluentFTP/wiki/FTP-Connection#faq_ftps) are supported for the control and data connections using .NET's `SslStream`
     - Passive and active data connections (PASV, EPSV, PORT and EPRT)
     - Supports Unix CHMOD, PRET, ProFTPD's SITE MKDIR and RMDIR commands, Serv-U's RMDA command
@@ -171,6 +171,9 @@ Check the [Wiki](https://github.com/robinrodricks/FluentFTP/wiki).
 
 We have an extensive [automated test suite](https://github.com/robinrodricks/FluentFTP/wiki/Automated-Testing) that tests FluentFTP against many servers. We use docker to orchestrate containerized FTP servers that are used for testing.
 
+## Security
+
+We have a state-of-the-art [security system](https://github.com/robinrodricks/FluentFTP/wiki/Security) to prevent many known FTP attacks.
 
 ## Sponsorship
 

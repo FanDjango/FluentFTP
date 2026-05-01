@@ -1,5 +1,42 @@
 # Release Notes
 
+#### 54.1.1
+
+ - **FTP Connection**
+   - Fix: Copy missing properties in `FtpConfig.CopyTo`
+
+#### 54.1.0
+
+ - **FTP Security**
+   - New: `SanitizeControlChars`, `SanitizeMultiline`, `SanitizeUnicodeSpoofing`, `SanitizeTraversal` and `SanitizeUrlEncoding` Properties to configure FTP path sanitization at a granular level
+   - Change: Refactor path and command sanitization logic into new `SanitizerModule`
+   - Change: Only clean slashes when sanitizing folder paths of already-sanitized paths
+   - Change: Remove outdated Properties `TimeZone` and `LocalTimeZone`
+ - **Testing**
+   - New: `PathInsecureTests` to ensure that the sanitizer is disabled based on config properties
+
+#### 54.0.3
+
+ - **FTP Security**
+   - Change: Allowed the `&` character in filenames by default
+ - **FTP Connection**
+   - Fix: `NullReferenceException` in FTPS disconnect when accessing `SslSessionLength`
+   - Fix: Improve CCC command handling for custom streams
+
+#### 54.0.2
+
+ - **FTP Security**
+   - New: Secure FTP path sanitizer to protect against FTP command injection, traversal, encoding bypasses, and parser confusion attacks
+   - Security: Major changes to FTP path handling, many new restrictions are introduced (see "Security" page on FluentFTP Wiki)
+   - Security: FTP command sanitization implemented in `Execute` API
+   - Security: FTP path sanitization implemented in all major API: `CreateDirectory`, `DeleteDirectory`, `DeleteFile`, `DirectoryExists`, `DownloadBytes`, `DownloadDirectory`, `DownloadFile`, `DownloadStream`, `EmptyDirectory`, `FileExists`, `GetChecksum`, `GetFilePermissions`, `GetFileSize`, `GetListing`, `GetModifiedTime`, `GetNameListing`, `GetObjectInfo`, `MoveDirectory`, `MoveFile`, `OpenAppend`, `OpenRead`, `OpenWrite`, `Rename`, `SetFilePermissions`, `SetModifiedTime`, `SetWorkingDirectory`, `TransferDirectory`, `TransferFile`, `UploadBytes`, `UploadDirectory`, `UploadFiles`, `UploadStream`, `CompareFile` 
+ - **Code cleanup**
+   - Change: Renamed primary overload of `GetFtpPath` to `SanitizeFtpPath` to better convey its intended function
+   - Change: Renamed secondary overload of `GetFtpPath` to `AppendFtpPath` to better convey its intended function
+ - **FTP Connection**
+   - New: Add `ConfigureAuthentication` event handler to FTP clients to customize `SslClientAuthenticationOptions` before TLS handshake and enable support for Linux for legacy FTPS servers
+   - New: Updated TLS handshake code to use `SslClientAuthenticationOptions` pattern in both synchronous and async methods
+
 #### 53.0.2
 
  - Fix missing await and async in Async `GetReply`

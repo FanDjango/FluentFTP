@@ -62,14 +62,14 @@ namespace FluentFTP {
 				throw new ObjectDisposedException("This FtpClient object has been disposed. It is no longer accessible.");
 			}
 
-			if (m_stream == null) {
+			if (m_stream != null && IsConnected) {
+				// After this call m_stream will be null and IsConnected will be false
+				((IInternalFtpClient)this).DisconnectInternal(); 
+			}
+
+			if (m_stream == null || IsConnected) {
 				m_stream = new FtpSocketStream(this);
 				m_stream.ValidateCertificate += new FtpSocketStreamSslValidation(FireValidateCertficate);
-			}
-			else {
-				if (IsConnected) {
-					((IInternalFtpClient)this).DisconnectInternal();
-				}
 			}
 
 			if (Host == null) {
@@ -251,6 +251,7 @@ namespace FluentFTP {
 
 			if (Config.Noop) {
 				if (Status.NoopDaemonTask == null) {
+					Status.NoopDaemonTokenSource ??= new CancellationTokenSource();
 					Status.NoopDaemonTask = Task.Factory.StartNew(() => { NoopDaemon(Status.NoopDaemonTokenSource.Token); }, Status.NoopDaemonTokenSource.Token);
 				}
 				Status.NoopDaemonEnable = true;
